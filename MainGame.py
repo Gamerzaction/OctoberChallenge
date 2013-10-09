@@ -1,225 +1,280 @@
 #!/usr/bin/env python
-import pygame
 import sys
-import time
+import pygame
+import random
+from math import *
 from pygame.locals import *
 
 
-class Container():
+class OctoberChallenge(pygame.sprite.Sprite):
     def __init__(self):
-        pass
-
-
-class OctoberChallenge():
-    global data
-    data = Container()
-    def __init__(self):
-        ## Basic setup
+        # # Basic setup
         pygame.init()
+        pygame.sprite.Sprite.__init__(self)
         fps_limiter = pygame.time.Clock()
 
-        ## Will be used later
-        data.player_health = 20
+        # # Will be used later
+        self.player_health = 20
 
-        ## Setting up the frame
+        # # Setting up the frame
         icon = pygame.image.load('sprites/other/ldOctober.png')
-        data.font = pygame.font.Font('fonts/gameFont.ttf', 20)
-        data.ambient_music = pygame.mixer.Sound('audio/groove.wav')
+        self.font = pygame.font.Font('fonts/gameFont.ttf', 20)
+        self.ambient_music = pygame.mixer.Sound('audio/groove.wav')
 
         pygame.display.set_icon(icon)
-        background = pygame.image.load('sprites/terrain/mapOne.png')
-        data.screen_x = 560
-        data.screen_y = 560
-        data.surface = pygame.display.set_mode((data.screen_x, data.screen_y), pygame.DOUBLEBUF)
+        self.background = pygame.image.load('sprites/terrain/mapOne.png')
+        self.screen_x = 560
+        self.screen_y = 560
+        self.surface = pygame.display.set_mode((self.screen_x, self.screen_y), pygame.DOUBLEBUF)
+        self.bliter = pygame.surface.Surface((self.screen_x, self.screen_y))
 
-        ## Mouse stuff
-        data.mouse_x, data.mouse_y = pygame.mouse.get_pos()
-        data.mouse_pointer = pygame.image.load('sprites/other/mouse_pointer.png').convert_alpha()
+        # # Mouse stuff
+        self.mouse_x, self.mouse_y = pygame.mouse.get_pos()
+        self.mouse_pointer = pygame.image.load('sprites/other/mouse_pointer.png').convert_alpha()
 
-        ## Player stuff
-        data.player_back = pygame.transform.scale2x(pygame.image.load('sprites/player/pb.png').convert_alpha())
-        data.player_front = pygame.transform.scale2x(pygame.image.load('sprites/player/pf.png').convert_alpha())
-        data.player_left = pygame.transform.scale2x(pygame.image.load('sprites/player/ps.png').convert_alpha())
-        data.player_right = pygame.transform.flip(data.player_left, True, False)
-        data.player_sprite = data.player_front
+        # # Player stuff
+        OctoberChallenge.pf = pygame.image.load('sprites/player/pf.png')
+        OctoberChallenge.pb = pygame.image.load('sprites/player/pb.png')
+        OctoberChallenge.pl = pygame.image.load('sprites/player/pl.png')
+        OctoberChallenge.pr = pygame.transform.flip(OctoberChallenge.pl, True, False)
+        
+        self.player_front = OctoberChallenge.pf
+        self.player_back = OctoberChallenge.pb
+        self.player_left = OctoberChallenge.pl
+        self.player_right = OctoberChallenge.pr
+        
+        self.player_front_rect = self.player_front.get_rect()
+        self.player_back_rect = self.player_back.get_rect()
+        self.player_left_rect = self.player_left.get_rect()
+        self.player_right_rect = self.player_right.get_rect()
+        
+        # Mob stuff
+        OctoberChallenge.mob_front = pygame.image.load('sprites/mobs/ffm.png').convert_alpha()
+        OctoberChallenge.mob_back = pygame.image.load('sprites/mobs/fbm.png').convert_alpha()
+        OctoberChallenge.mob_left = pygame.image.load('sprites/mobs/flm.png').convert_alpha()
+        OctoberChallenge.mob_right = pygame.transform.flip(OctoberChallenge.mob_left, True, False)
+        
+        self.mob_front = OctoberChallenge.mob_front
+        self.mob_back = OctoberChallenge.mob_back
+        self.mob_left = OctoberChallenge.mob_left
+        self.mob_right = OctoberChallenge.mob_right
+        
+        self.mob_front_rect = self.mob_front.get_rect()
+        self.mob_back_rect = self.mob_back.get_rect()
+        self.mob_left_rect = self.mob_left.get_rect()
+        self.mob_right_rect = self.mob_right.get_rect()
+        
+        # # Terrain types
+        self.stone_floor_internal = pygame.transform.scale2x(pygame.image.load('sprites/terrain/internal_floor.png'))
+        self.grass_floor_external = pygame.transform.scale2x(pygame.image.load('sprites/terrain/external_floor.png'))
 
-        ## Mob stuff
-        data.mob_front = pygame.image.load('sprites/mobs/ffm.png').convert_alpha()
-        data.mob_back = pygame.image.load('sprites/mobs/fbm.png').convert_alpha()
-        data.mob_left = pygame.image.load('sprites/mobs/flm.png').convert_alpha()
-        data.mob_right = pygame.transform.flip(data.mob_left, True, False)
+        # # Colour variables
+        self.red = pygame.Color(255, 0, 0)
+        self.green = pygame.Color(0, 255, 0)
+        self.blue = pygame.Color(0, 0, 255)
+        self.white = pygame.Color(255, 255, 255)
+        self.black = pygame.Color(0, 0, 0)
+        self.pink = pygame.Color(255, 0, 255)
+        self.yellow = pygame.Color(255, 255, 0)
 
-        ## Terrain types
-        stone_floor_internal = pygame.transform.scale2x(pygame.image.load('sprites/terrain/internal_floor.png'))
-        grass_floor_external = pygame.transform.scale2x(pygame.image.load('sprites/terrain/external_floor.png'))
+        # # Mapping stuff
+        self.terrain_array = []
+        for y in range(0, self.screen_y):
+            row = []
+            for x in range(0, self.screen_x):
+                row.append(0)
+            self.terrain_array.append(row)
+            self.tile_size = 16
+        self.x_step = self.screen_x / self.tile_size
+        self.y_step = self.screen_y / self.tile_size
 
-        ## Colour variables
-        data.red = pygame.Color(255, 0, 0)
-        data.green = pygame.Color(0, 255, 0)
-        data.blue = pygame.Color(0, 0, 255)
-        data.white = pygame.Color(255, 255, 255)
-        data.black = pygame.Color(0, 0, 0)
-        data.pink = pygame.Color(255, 0, 255)
-        data.yellow = pygame.Color(255, 255, 0)
+        # # Direction stuff
+        self.north = False
+        self.south = False
+        self.east = False
+        self.west = False
 
-        ## Mapping stuff
-        data.tile_size = 16
-        data.x_step = data.screen_x / data.tile_size
-        data.y_step = data.screen_y / data.tile_size
+        # # General
+        self.player_x = self.screen_x / 2
+        self.player_y = self.screen_y / 2
+        self.player_move_speed = 1
 
-        ## Direction stuff
-        data.north = False
-        data.south = False
-        data.east = False
-        data.west = False
+        # # Audio variables
+        self.music_playing = False
+        self.min_volume = 0.000
+        self.max_volume = 0.200
+        self.play_music = True
+        self.vol_up = False
+        self.vol_down = False
+        self.current_volume = 0.2
 
-        ## General
-        data.player_x = data.screen_x / 2
-        data.player_y = data.screen_y / 2
-        data.player_move_speed = 1
-
-        ## Audio variables
-        data.music_playing = False
-        data.min_volume = 0.000
-        data.max_volume = 0.200
-        data.play_music = True
-        data.vol_up = False
-        data.vol_down = False
-        data.current_volume = 0.2
-
-        ## Other stuff
-        data.time_played = 0
-        data.frame_rate = 30
+        # # Other stuff
+        self.time_played = 0
+        self.frame_rate = 30
+        
+        self.move_speed = 1
 
         surface_array = []
-        for x in range(0, data.screen_x / data.x_step):
-            for y in range(0, data.screen_y / data.y_step):
+        for x in range(0, self.screen_x / self.x_step):
+            for y in range(0, self.screen_y / self.y_step):
                 surface_array.append((x, y))
 
         while True:
 
-            fps_limiter.tick(100)
-            for x in range(len(surface_array)):
-                for y in range(len(surface_array)):
-                    data.surface.blit(grass_floor_external, (x * 32, y * 32))
-            data.surface.blit(data.mouse_pointer, (data.mouse_x, data.mouse_y))
-
+            fps_limiter.tick(60)
+            #===================================================================
+            # for x in range(len(surface_array)):
+            #     for y in range(len(surface_array)):
+            #         self.surface.blit(grass_floor_external, (x * 32, y * 32))
+            # self.draw()
+            # self.surface.blit(self.mouse_pointer, (self.mouse_x, self.mouse_y))
+            #===================================================================
+            self.surface.fill(self.white)
             self.controls()
             self.player_move_control()
             self.audio_control()
+#             self.collision_detection(self.player_sprites_group)
 
-            ## All terrain blitting must be done before this
-            if data.play_music:
-                self.draw_message("Volume: " + str(data.current_volume), 10, 10, data.blue)
-            data.surface.blit(self.player_sprite_control(), (data.player_x, data.player_y))
+            # # All terrain blitting must be done before this
+            if self.play_music:
+                self.draw_message("Volume: " + str(self.current_volume), 10, 10, self.blue)
+#             self.surface.blit(self.player_sprite_control(), (self.player_x, self.player_y))
             pygame.display.update()
             pygame.display.set_caption("FPS: %s" % fps_limiter.get_fps())
 
-    @staticmethod
-    def controls():
+    def gen_terrain(self):
+        v = random.randint(0, self.screen_x)
+        a = sin(v)
+        b = cos(v)
+        d = sqrt(self.screen_x ** 2 + self.screen_y ** 2)
+        c = random.random() * d - d / 2
+        e = random.randint(15)
+        for x in range(self.screen_x):
+            for y in range(self.screen_y):
+                self.terrain_array[x][y] += e * atan(a * x + b * y - c)
+
+    def draw(self):
+        for y in range(0, self.screen_y):
+            for x in range(0, self.screen_x):
+                if self.terrain_array[y][x] + 150 < 0:
+                    color = self.black
+                else:
+                    if self.terrain_array[y][x] + 150 > 255:
+                        color = self.white
+                    else:
+                        color = [self.terrain_array[y][x] + 150, self.terrain_array[y][x] + 150, self.terrain_array[y][x] + 150]
+                self.bliter.fill(color)
+        self.surface.blit(self.bliter, (x * self.tile_size, y * self.tile_size))
+        pygame.display.flip()
+
+    def controls(self):
 
         keys = pygame.key.get_pressed()
         if keys[K_w] or keys[K_UP]:
-            data.north = True
-            data.south = False
+            self.north = True
+            self.south = False
         if keys[K_s] or keys[K_DOWN]:
-            data.north = False
-            data.south = True
+            self.north = False
+            self.south = True
         if keys[K_a] or keys[K_LEFT]:
-            data.west = True
-            data.east = False
+            self.west = True
+            self.east = False
         if keys[K_d] or keys[K_RIGHT]:
-            data.west = False
-            data.east = True
+            self.west = False
+            self.east = True
         if keys[K_MINUS]:
-            data.vol_down = True
-            data.vol_up = False
+            self.vol_down = True
+            self.vol_up = False
         if keys[K_EQUALS]:
-            data.vol_down = False
-            data.vol_up = True
+            self.vol_down = False
+            self.vol_up = True
 
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
             elif event.type == MOUSEBUTTONDOWN:
-                print("Mouse x: %s | Mouse y: %s" % (data.mouse_x, data.mouse_y))
+                print("Mouse x: %s | Mouse y: %s" % (self.mouse_x, self.mouse_y))
             elif event.type == MOUSEMOTION:
-                data.mouse_x, data.mouse_y = event.pos
+                self.mouse_x, self.mouse_y = event.pos
             elif event.type == KEYDOWN:
                 if event.key == K_p:
-                    if data.play_music:
-                        data.play_music = False
-                    elif not data.play_music:
-                        data.play_music = True
+                    if self.play_music:
+                        self.play_music = False
+                    elif not self.play_music:
+                        self.play_music = True
             elif event.type == KEYUP:
                 if event.key == (K_w or K_UP):
-                    data.north = False
-                    data.south = False
+                    self.north = False
+                    self.south = False
                 if event.key == (K_s or K_DOWN):
-                    data.north = False
-                    data.south = False
+                    self.north = False
+                    self.south = False
                 if event.key == (K_a or K_LEFT):
-                    data.east = False
-                    data.west = False
+                    self.east = False
+                    self.west = False
                 if event.key == (K_d or K_RIGHT):
-                    data.east = False
-                    data.west = False
+                    self.east = False
+                    self.west = False
                 if event.key == K_MINUS:
-                    data.vol_down = False
+                    self.vol_down = False
                 if event.key == K_EQUALS:
-                    data.vol_up = False
+                    self.vol_up = False
+                    
+    def player_move_control(self):
 
-    @staticmethod
-    def player_move_control():
+        if self.north:
+            self.player_y -= self.move_speed
+        if self.east:
+            self.player_x += self.move_speed
+        if self.south:
+            self.player_y += self.move_speed
+        if self.west:
+            self.player_x -= self.move_speed
 
-        if data.north:
-            data.player_y -= data.player_move_speed
-        if data.east:
-            data.player_x += data.player_move_speed
-        if data.south:
-            data.player_y += data.player_move_speed
-        if data.west:
-            data.player_x -= data.player_move_speed
+        if self.player_x == (0 or self.screen_x):
+            self.player_move_speed = 0
+        if self.player_y == (0 or self.screen_y):
+            self.player_move_speed = 0
 
-        if data.player_x == (0 or data.screen_x):
-            data.player_move_speed = 0
-        if data.player_y == (0 or data.screen_y):
-            data.player_move_speed = 0
+#===============================================================================
+#     @staticmethod
+#     def player_sprite_control():
+# 
+#         if self.north:
+#             self.player_sprite = self.player_back
+#         if self.south:
+#             self.player_sprite = self.player_front
+#         if self.east:
+#             self.player_sprite = self.player_right
+#         if self.west:
+#             self.player_sprite = self.player_left
+#         return self.player_sprite
+#===============================================================================
 
-    @staticmethod
-    def player_sprite_control():
-
-        if data.north:
-            data.player_sprite = data.player_back
-        if data.south:
-            data.player_sprite = data.player_front
-        if data.east:
-            data.player_sprite = data.player_right
-        if data.west:
-            data.player_sprite = data.player_left
-        return data.player_sprite
-
-    @staticmethod
-    def draw_message(msg, loc_x, loc_y, colour):
-        message_surface = data.font.render(msg, True, colour)
+    def draw_message(self, msg, loc_x, loc_y, colour):
+        message_surface = self.font.render(msg, True, colour)
         message_rect = message_surface.get_rect()
         message_rect.topleft = (loc_x, loc_y)
-        data.surface.blit(message_surface, message_rect)
+        self.surface.blit(message_surface, message_rect)
 
-    @staticmethod
-    def audio_control():
+    def audio_control(self):
 
-        if data.vol_up:
-            data.current_volume += 0.005
-        elif data.vol_down:
-            data.current_volume -= 0.005
+        if self.vol_up:
+            self.current_volume += 0.005
+        elif self.vol_down:
+            self.current_volume -= 0.005
 
-        if data.play_music:
-            data.ambient_music.play()
-            data.ambient_music.set_volume(data.current_volume)
+        if self.play_music:
+            self.ambient_music.play()
+            self.ambient_music.set_volume(self.current_volume)
         else:
-            data.ambient_music.stop()
+            self.ambient_music.stop()
+            
+    def collision_detection(self, group_name):
+        if pygame.sprite.spritecollide(self, group_name, False):
+            self.move_speed = -self.move_speed           
 
 if __name__ == '__main__':
     Game = OctoberChallenge()
+    Game.animate_mouse_pointer()
