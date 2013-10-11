@@ -3,14 +3,13 @@ import sys
 import pygame
 import random
 from math import *
-from pygame.locals import *
+from pygame import *
 
 
 class OctoberChallenge(pygame.sprite.Sprite):
     def __init__(self):
         # # Basic setup
         pygame.init()
-        pygame.sprite.Sprite.__init__(self)
         fps_limiter = pygame.time.Clock()
 
         # # Will be used later
@@ -33,40 +32,26 @@ class OctoberChallenge(pygame.sprite.Sprite):
         self.mouse_pointer = pygame.image.load('sprites/other/mouse_pointer.png').convert_alpha()
 
         # # Player stuff
-        OctoberChallenge.pf = pygame.image.load('sprites/player/pf.png')
-        OctoberChallenge.pb = pygame.image.load('sprites/player/pb.png')
-        OctoberChallenge.pl = pygame.image.load('sprites/player/pl.png')
-        OctoberChallenge.pr = pygame.transform.flip(OctoberChallenge.pl, True, False)
-        
-        self.player_front = OctoberChallenge.pf
-        self.player_back = OctoberChallenge.pb
-        self.player_left = OctoberChallenge.pl
-        self.player_right = OctoberChallenge.pr
-        
+        self.player_front = pygame.image.load('sprites/player/pf.png')
+        self.player_back = pygame.image.load('sprites/player/pb.png')
+        self.player_left = pygame.image.load('sprites/player/pl.png')
+        self.player_right = pygame.transform.flip(self.player_left, True, False)
+
         self.player_front_rect = self.player_front.get_rect()
         self.player_back_rect = self.player_back.get_rect()
         self.player_left_rect = self.player_left.get_rect()
         self.player_right_rect = self.player_right.get_rect()
-        
+
+        self.player_sprite = self.player_front
+        self.player_sprite_rect = self.player_sprite.get_rect()
+
         # Mob stuff
-        OctoberChallenge.mob_front = pygame.image.load('sprites/mobs/ffm.png').convert_alpha()
-        OctoberChallenge.mob_back = pygame.image.load('sprites/mobs/fbm.png').convert_alpha()
-        OctoberChallenge.mob_left = pygame.image.load('sprites/mobs/flm.png').convert_alpha()
-        OctoberChallenge.mob_right = pygame.transform.flip(OctoberChallenge.mob_left, True, False)
-        
-        self.mob_front = OctoberChallenge.mob_front
-        self.mob_back = OctoberChallenge.mob_back
-        self.mob_left = OctoberChallenge.mob_left
-        self.mob_right = OctoberChallenge.mob_right
-        
-        self.mob_front_rect = self.mob_front.get_rect()
-        self.mob_back_rect = self.mob_back.get_rect()
-        self.mob_left_rect = self.mob_left.get_rect()
-        self.mob_right_rect = self.mob_right.get_rect()
-        
+
         # # Terrain types
-        self.stone_floor_internal = pygame.transform.scale2x(pygame.image.load('sprites/terrain/internal_floor.png'))
-        self.grass_floor_external = pygame.transform.scale2x(pygame.image.load('sprites/terrain/external_floor.png'))
+        self.stone_floor_internal = pygame.image.load('sprites/terrain/internal_floor.png')
+        self.stone_floor_rect = self.stone_floor_internal.get_rect()
+        self.grass_floor_external = pygame.image.load('sprites/terrain/external_floor.png')
+        self.grass_floor_rect = self.grass_floor_external.get_rect()
 
         # # Colour variables
         self.red = pygame.Color(255, 0, 0)
@@ -78,15 +63,17 @@ class OctoberChallenge(pygame.sprite.Sprite):
         self.yellow = pygame.Color(255, 255, 0)
 
         # # Mapping stuff
-        self.terrain_array = []
-        for y in range(0, self.screen_y):
-            row = []
-            for x in range(0, self.screen_x):
-                row.append(0)
-            self.terrain_array.append(row)
-            self.tile_size = 16
+        self.tile_size = 16
         self.x_step = self.screen_x / self.tile_size
         self.y_step = self.screen_y / self.tile_size
+        self.tile_type = 0
+        self.tiles = 0
+        self.tile_map = []
+        while self.tiles < 16:
+            self.y_pos = random.randint(1, self.screen_y) / 16
+            self.x_pos = random.randint(1, self.screen_x)
+            self.tile_map.append((self.x_pos / self.tile_size, self.y_pos / self.tile_size))
+            self.tiles += 1
 
         # # Direction stuff
         self.north = False
@@ -103,7 +90,7 @@ class OctoberChallenge(pygame.sprite.Sprite):
         self.music_playing = False
         self.min_volume = 0.000
         self.max_volume = 0.200
-        self.play_music = True
+        self.play_music = False
         self.vol_up = False
         self.vol_down = False
         self.current_volume = 0.2
@@ -121,6 +108,8 @@ class OctoberChallenge(pygame.sprite.Sprite):
 
         while True:
 
+            self.tile_type = random.randint(0, 2)
+
             fps_limiter.tick(60)
             #===================================================================
             # for x in range(len(surface_array)):
@@ -133,14 +122,15 @@ class OctoberChallenge(pygame.sprite.Sprite):
             self.controls()
             self.player_move_control()
             self.audio_control()
-#             self.collision_detection(self.player_sprites_group)
 
+            for i in self.tile_map:
+                self.surface.blit(self.stone_floor_internal, i, self.stone_floor_rect)
             # # All terrain blitting must be done before this
             if self.play_music:
                 self.draw_message("Volume: " + str(self.current_volume), 10, 10, self.blue)
-#             self.surface.blit(self.player_sprite_control(), (self.player_x, self.player_y))
+            self.surface.blit(self.player_sprite_control(), (self.player_x, self.player_y))
             pygame.display.update()
-            pygame.display.set_caption("FPS: %s" % fps_limiter.get_fps())
+            pygame.display.set_caption("FPS: %s" % round(fps_limiter.get_fps()) + " | October LD")
 
     def gen_terrain(self):
         v = random.randint(0, self.screen_x)
@@ -222,7 +212,6 @@ class OctoberChallenge(pygame.sprite.Sprite):
                     self.vol_up = False
                     
     def player_move_control(self):
-
         if self.north:
             self.player_y -= self.move_speed
         if self.east:
@@ -231,26 +220,37 @@ class OctoberChallenge(pygame.sprite.Sprite):
             self.player_y += self.move_speed
         if self.west:
             self.player_x -= self.move_speed
-
-        if self.player_x == (0 or self.screen_x):
+        if self.player_x == 0:
+            self.west = False
+            print self.east
+            print self.west
+        if self.player_x == self.screen_x:
             self.player_move_speed = 0
-        if self.player_y == (0 or self.screen_y):
+            self.east = False
+            print self.east
+            print self.west
+        if self.player_y == 0:
             self.player_move_speed = 0
+            self.north = False
+            print self.north
+            print self.south
+        if self.player_y == self.screen_y:
+            self.player_move_speed = 0
+            self.south = False
+            print self.north
+            print self.south
 
-#===============================================================================
-#     @staticmethod
-#     def player_sprite_control():
-# 
-#         if self.north:
-#             self.player_sprite = self.player_back
-#         if self.south:
-#             self.player_sprite = self.player_front
-#         if self.east:
-#             self.player_sprite = self.player_right
-#         if self.west:
-#             self.player_sprite = self.player_left
-#         return self.player_sprite
-#===============================================================================
+    def player_sprite_control(self):
+        if self.north:
+            self.player_sprite = self.player_back
+        if self.south:
+            self.player_sprite = self.player_front
+        if self.east:
+            self.player_sprite = self.player_right
+        if self.west:
+            self.player_sprite = self.player_left
+
+        return self.player_sprite
 
     def draw_message(self, msg, loc_x, loc_y, colour):
         message_surface = self.font.render(msg, True, colour)
@@ -277,4 +277,3 @@ class OctoberChallenge(pygame.sprite.Sprite):
 
 if __name__ == '__main__':
     Game = OctoberChallenge()
-    Game.animate_mouse_pointer()
